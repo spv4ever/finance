@@ -211,11 +211,11 @@ def main():
         # mostrar_tabla_completa(df_original, "fix VEND_FIRMA")
         # Aquí comenzará el flujo de transformaciones posteriores...
         # ✅ Mover archivo procesado
-        # procesados_path = os.path.join(FOLDER_PATH, "procesados")
-        # os.makedirs(procesados_path, exist_ok=True)
-        # archivo_destino = os.path.join(procesados_path, os.path.basename(path))
-        # os.rename(path, archivo_destino)
-        # print(f"📁 Archivo movido a: {archivo_destino}")
+        procesados_path = os.path.join(FOLDER_PATH, "procesados")
+        os.makedirs(procesados_path, exist_ok=True)
+        archivo_destino = os.path.join(procesados_path, os.path.basename(path))
+        os.rename(path, archivo_destino)
+        print(f"📁 Archivo movido a: {archivo_destino}")
 
 if __name__ == "__main__":
     main()
