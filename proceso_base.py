@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import pyodbc
 from services.db_connector import get_connection
 import math
+import uuid
 
 # Cargar .env
 load_dotenv()
@@ -14,6 +15,10 @@ VALID_EXTENSIONS = (".xlsx", ".xls", ".csv")
 
 pd.set_option("display.width", None)
 pd.set_option("display.max_columns", None)
+
+
+def generar_guid():
+    return uuid.uuid4().hex[:12]  # Suficiente para 100k registros
 
 def get_files_from_folder(folder_path):
     return sorted([
@@ -70,17 +75,22 @@ def fix_comisiones(df):
 def desdoblar_comisiones(df):
     df['IMPORTE_NUMERICO'] = df['IMPORTE']  # conservar valor original
 
+
+    # Propagar el GUID en ambas mitades
     # COD_VEND
     cod_rows = df.copy()
     cod_rows['FUENTE'] = 'COD_VEND'
     cod_rows['IMPORTE'] = cod_rows['com_COD_VEND']
     cod_rows['VENDEDOR'] = cod_rows['COD_VEND']
+    cod_rows['guid'] = df['guid']
 
+    
     # VEND_FIRMA
     firma_rows = df.copy()
     firma_rows['FUENTE'] = 'VEND_FIRMA'
     firma_rows['IMPORTE'] = firma_rows['com_VEND_FIRMA']
     firma_rows['VENDEDOR'] = firma_rows['VEND_FIRMA']
+    firma_rows['guid'] = df['guid']
 
     # Unir
     df_final = pd.concat([cod_rows, firma_rows], ignore_index=True)
@@ -95,6 +105,7 @@ def desdoblar_comisiones(df):
     df_final = df_final.drop(columns=[
         'COD_VEND', 'VEND_FIRMA', 'com_COD_VEND', 'com_VEND_FIRMA', 'KPI', 'AÑO', 'MES','NOMBRE'
     ], errors='ignore')
+    df_final = df_final.sort_values(by=['guid', 'FUENTE']).reset_index(drop=True)
 
     return df_final
 
@@ -159,11 +170,11 @@ def subir_comisiones(df, tabla_destino, batch_size=500):
                 cursor.execute(f"""
                     INSERT INTO {tabla_destino} (
                         FECHA_ALTA, SAP, IND_PRIMERA_UTIL_INTERNA, FTCI, NUM_OPERACIONES,
-                        IMPORTE_NUMERICO, VENDEDOR, IMPORTE, FUENTE, indice, numPersonal
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        IMPORTE_NUMERICO, VENDEDOR, IMPORTE, FUENTE, indice, numPersonal, guid
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, row['FECHA_ALTA'], row['SAP'], row['IND_PRIMERA_UTIL_INTERNA'], row['FTCI'],
                     row['NUM_OPERACIONES'], row['IMPORTE_NUMERICO'], row['VENDEDOR'],
-                    row['IMPORTE'], row['FUENTE'], row['indice'], row['numPersonal'])
+                    row['IMPORTE'], row['FUENTE'], row['indice'], row['numPersonal'], row['guid'])
             except Exception as e:
                 print(f"❌ Error en fila {idx}: {e}")
                 print(row.to_dict())
@@ -183,6 +194,7 @@ def main():
     for path in files:
         print(f"\n📂 Procesando archivo: {os.path.basename(path)}")
         df_original = read_file_as_text(path)
+        df_original["guid"] = [generar_guid() for _ in range(len(df_original))]
         #print("✅ Archivo leído. Columnas detectadas:")
         #print(df_original.columns.tolist())
         df_original = fix_vend_firma(df_original)
@@ -194,16 +206,16 @@ def main():
         #mostrar_tabla_completa(df_original, "fix VEND_FIRMA")
         df_original = desdoblar_comisiones(df_original)
         chequear_equilibrio(df_original)
-        #subir_comisiones(df_original, "Datos_Normalizados", batch_size=500)
-        # mostrar_tabla_completa(df_original, "🔁 Desdoble de comisiones por COD_VEND y VEND_FIRMA")
+        subir_comisiones(df_original, "Datos_Normalizados", batch_size=500)
+        #mostrar_tabla_completa(df_original, "🔁 Desdoble de comisiones por COD_VEND y VEND_FIRMA")
         # mostrar_tabla_completa(df_original, "fix VEND_FIRMA")
         # Aquí comenzará el flujo de transformaciones posteriores...
         # ✅ Mover archivo procesado
-        procesados_path = os.path.join(FOLDER_PATH, "procesados")
-        os.makedirs(procesados_path, exist_ok=True)
-        archivo_destino = os.path.join(procesados_path, os.path.basename(path))
-        os.rename(path, archivo_destino)
-        print(f"📁 Archivo movido a: {archivo_destino}")
+        # procesados_path = os.path.join(FOLDER_PATH, "procesados")
+        # os.makedirs(procesados_path, exist_ok=True)
+        # archivo_destino = os.path.join(procesados_path, os.path.basename(path))
+        # os.rename(path, archivo_destino)
+        # print(f"📁 Archivo movido a: {archivo_destino}")
 
 if __name__ == "__main__":
     main()
