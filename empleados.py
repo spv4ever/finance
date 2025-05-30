@@ -75,24 +75,30 @@ def sync_empleados():
     print("📤 Cargando datos actuales desde base de datos...")
     db_df = read_sql_data()
 
-    # Detectar nuevos (en Excel y no en BD)
-    merged = pd.merge(excel_df, db_df, on="SAP", how="left", indicator=True)
-    nuevos_saps = merged[merged["_merge"] == "left_only"]["SAP"]
-    nuevos = excel_df[excel_df["SAP"].isin(nuevos_saps)]
-    
-    # Detectar eliminados (en BD y no en Excel)
-    merged_del = pd.merge(db_df, excel_df, on="SAP", how="left", indicator=True)
-    eliminados = merged_del[merged_del["_merge"] == "left_only"]["SAP"]
-
     conn = get_connection()
     cursor = conn.cursor()
 
-    # Eliminar registros
-    if not eliminados.empty:
-        print(f"🗑️ Eliminando {len(eliminados)} registros obsoletos...")
-        for sap in eliminados:
-            cursor.execute(f"DELETE FROM {TABLE_NAME} WHERE SAP = ?", sap)
-        conn.commit()
+    nuevos = pd.DataFrame()
+    eliminados = pd.Series(dtype=str)
+
+    if db_df.empty:
+        print("⚠️ La tabla en base de datos está vacía. Se insertarán todos los registros del Excel.")
+        nuevos = excel_df.copy()
+    else:
+        # Detectar nuevos (en Excel y no en BD)
+        merged = pd.merge(excel_df, db_df, on="SAP", how="left", indicator=True)
+        nuevos_saps = merged[merged["_merge"] == "left_only"]["SAP"]
+        nuevos = excel_df[excel_df["SAP"].isin(nuevos_saps)]
+
+        # Detectar eliminados (en BD y no en Excel)
+        merged_del = pd.merge(db_df, excel_df, on="SAP", how="left", indicator=True)
+        eliminados = merged_del[merged_del["_merge"] == "left_only"]["SAP"]
+
+        if not eliminados.empty:
+            print(f"🗑️ Eliminando {len(eliminados)} registros obsoletos...")
+            for sap in eliminados:
+                cursor.execute(f"DELETE FROM {TABLE_NAME} WHERE SAP = ?", sap)
+            conn.commit()
 
     # Insertar nuevos
     if not nuevos.empty:
@@ -109,11 +115,13 @@ def sync_empleados():
     conn.close()
 
     write_log_date(current_file_date)
+
     print("\n📊 Resumen:")
     print(f"   ➕ Insertados: {len(nuevos)}")
     print(f"   🗑️ Eliminados: {len(eliminados)}")
     print("✅ Sincronización completada. Log actualizado.")
-    print("✅ Sincronización completada. Log actualizado.")
+
+
 
 
 if __name__ == "__main__":

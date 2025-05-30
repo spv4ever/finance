@@ -63,10 +63,10 @@ def procesar_pestana(pestana, tabla_destino):
 
     df = df.astype(str)
 
-    print(df.dtypes)
+    #print(df.dtypes)
 
-    print("📋 Columnas leídas:", df.columns.tolist())
-    print(df)
+    #print("📋 Columnas leídas:", df.columns.tolist())
+    #print(df)
 
     df = df[list(COLUMNAS_MAP.keys())]
     df = df.rename(columns=COLUMNAS_MAP)
@@ -84,14 +84,14 @@ def procesar_pestana(pestana, tabla_destino):
             .replace('', '0')      # coma decimal a punto
         )
         df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).round(2)
-        print(df)
+        #print(df)
 
     df = df.dropna(subset=['fecha'])
 
     # Comparar fechas
     fechas_existentes = leer_existentes(tabla_destino)
     nuevos_df = df[~df['fecha'].isin(fechas_existentes)]
-    print(df)
+    #print(df)
 
     insertados = insertar_nuevos(tabla_destino, nuevos_df, batch_size=500)
 

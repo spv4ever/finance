@@ -132,8 +132,8 @@ def subir_comisiones(df, tabla_destino, batch_size=500):
         print("🚀 Subiendo registros nuevos...")
     elif count_db != count_local or not math.isclose(sum_db, sum_local, abs_tol=0.10):
         print("⚠️ Inconsistencia detectada. Borrando toda la tabla...")
-        # cursor.execute(f"DELETE FROM {tabla_destino}")
-        # conn.commit()
+        cursor.execute(f"DELETE FROM {tabla_destino}")
+        conn.commit()
     else:
         print("✅ Los datos ya están cargados correctamente. No se sube nada.")
         cursor.close()
@@ -183,21 +183,27 @@ def main():
     for path in files:
         print(f"\n📂 Procesando archivo: {os.path.basename(path)}")
         df_original = read_file_as_text(path)
-        print("✅ Archivo leído. Columnas detectadas:")
-        print(df_original.columns.tolist())
+        #print("✅ Archivo leído. Columnas detectadas:")
+        #print(df_original.columns.tolist())
         df_original = fix_vend_firma(df_original)
         print("🛠️ Fix aplicado: VEND_FIRMA completado si estaba vacío o era 0.")
         df_original = fix_codigos_vacios(df_original)
         df_original = fix_importe(df_original)
         df_original = fix_comisiones(df_original)
-        mostrar_tabla_completa(df_original, "fix COD_VEND y VEND_FIRMA vacíos")
-        mostrar_tabla_completa(df_original, "fix VEND_FIRMA")
+        #mostrar_tabla_completa(df_original, "fix COD_VEND y VEND_FIRMA vacíos")
+        #mostrar_tabla_completa(df_original, "fix VEND_FIRMA")
         df_original = desdoblar_comisiones(df_original)
         chequear_equilibrio(df_original)
-        subir_comisiones(df_original, "Datos_Normalizados", batch_size=500)
+        #subir_comisiones(df_original, "Datos_Normalizados", batch_size=500)
         # mostrar_tabla_completa(df_original, "🔁 Desdoble de comisiones por COD_VEND y VEND_FIRMA")
-        mostrar_tabla_completa(df_original, "fix VEND_FIRMA")
+        # mostrar_tabla_completa(df_original, "fix VEND_FIRMA")
         # Aquí comenzará el flujo de transformaciones posteriores...
+        # ✅ Mover archivo procesado
+        procesados_path = os.path.join(FOLDER_PATH, "procesados")
+        os.makedirs(procesados_path, exist_ok=True)
+        archivo_destino = os.path.join(procesados_path, os.path.basename(path))
+        os.rename(path, archivo_destino)
+        print(f"📁 Archivo movido a: {archivo_destino}")
 
 if __name__ == "__main__":
     main()
