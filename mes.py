@@ -12,6 +12,11 @@ from config import SHARED_FOLDER
 
 def main():
     files = get_excel_or_csv_files(SHARED_FOLDER)
+
+    if not files:
+        print("📭 No se encontraron archivos para procesar en la carpeta compartida.")
+        return
+    
     for file_path in files:
         print(f'📂 Procesando archivo: {file_path}')
         records = read_file(file_path)
