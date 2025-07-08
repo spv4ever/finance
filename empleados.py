@@ -1,4 +1,3 @@
-
 import os
 import pandas as pd
 import pyodbc
@@ -43,10 +42,7 @@ def read_excel_data(path):
     df = df[COLUMNS_MAP.keys()]
     df = df.rename(columns=COLUMNS_MAP)
     df = df.fillna("")
-
-    # Quitar ceros a la izquierda en SAP
     df["SAP"] = df["SAP"].str.lstrip("0")
-    
     return df
 
 
@@ -85,12 +81,12 @@ def sync_empleados():
         print("⚠️ La tabla en base de datos está vacía. Se insertarán todos los registros del Excel.")
         nuevos = excel_df.copy()
     else:
-        # Detectar nuevos (en Excel y no en BD)
+        # Detectar nuevos
         merged = pd.merge(excel_df, db_df, on="SAP", how="left", indicator=True)
         nuevos_saps = merged[merged["_merge"] == "left_only"]["SAP"]
         nuevos = excel_df[excel_df["SAP"].isin(nuevos_saps)]
 
-        # Detectar eliminados (en BD y no en Excel)
+        # Detectar eliminados
         merged_del = pd.merge(db_df, excel_df, on="SAP", how="left", indicator=True)
         eliminados = merged_del[merged_del["_merge"] == "left_only"]["SAP"]
 
@@ -98,6 +94,18 @@ def sync_empleados():
             print(f"🗑️ Eliminando {len(eliminados)} registros obsoletos...")
             for sap in eliminados:
                 cursor.execute(f"DELETE FROM {TABLE_NAME} WHERE SAP = ?", sap)
+            conn.commit()
+
+        # 🔄 Actualizar NIF_CAPADO si ha cambiado
+        merged_update = pd.merge(excel_df, db_df, on="SAP", how="inner", suffixes=('', '_db'))
+        updates = merged_update[merged_update["NIF_CAPADO"] != merged_update["NIF_CAPADO_db"]]
+        if not updates.empty:
+            print(f"🔁 Actualizando {len(updates)} registros con nuevo NIF_CAPADO...")
+            for _, row in updates.iterrows():
+                cursor.execute(
+                    f"UPDATE {TABLE_NAME} SET NIF_CAPADO = ? WHERE SAP = ?",
+                    row["NIF_CAPADO"], row["SAP"]
+                )
             conn.commit()
 
     # Insertar nuevos
@@ -113,15 +121,13 @@ def sync_empleados():
 
     cursor.close()
     conn.close()
-
     write_log_date(current_file_date)
 
     print("\n📊 Resumen:")
     print(f"   ➕ Insertados: {len(nuevos)}")
     print(f"   🗑️ Eliminados: {len(eliminados)}")
+    print(f"   🔁 Actualizados: {len(updates) if not db_df.empty else 0}")
     print("✅ Sincronización completada. Log actualizado.")
-
-
 
 
 if __name__ == "__main__":
