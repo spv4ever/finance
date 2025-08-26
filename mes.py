@@ -31,7 +31,7 @@ def main():
         if new_records:
             confirm = input(f"Se han detectado {len(new_records)} registros nuevos. ¿Deseas subirlos? (s/n): ")
             if confirm.lower() == 's':
-                insert_records(new_records, batch_size=500, pause_seconds=5)
+                insert_records(new_records, batch_size=1000, pause_seconds=5)
             else:
                 print("🚫 Inserción cancelada por el usuario.")
         else:
