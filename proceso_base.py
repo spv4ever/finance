@@ -65,6 +65,7 @@ def fix_comisiones(df):
     df['IMPORTE'] = pd.to_numeric(df['IMPORTE'], errors='coerce').fillna(0).round(2)
 
     # Calcular 20% para com_COD_VEND -- Cambio a 0.40 pendiente de aprobar
+    
     df['com_COD_VEND'] = (df['IMPORTE'] * 0.20).round(2)
 
     # Calcular el resto para com_VEND_FIRMA
