@@ -66,7 +66,7 @@ def fix_comisiones(df):
 
     # Calcular 20% para com_COD_VEND -- Cambio a 0.40 pendiente de aprobar
     
-    df['com_COD_VEND'] = (df['IMPORTE'] * 0.20).round(2)
+    df['com_COD_VEND'] = (df['IMPORTE'] * 0.40).round(2)
 
     # Calcular el resto para com_VEND_FIRMA
     df['com_VEND_FIRMA'] = (df['IMPORTE'] - df['com_COD_VEND']).round(2)
@@ -207,7 +207,7 @@ def main():
         #mostrar_tabla_completa(df_original, "fix VEND_FIRMA")
         df_original = desdoblar_comisiones(df_original)
         chequear_equilibrio(df_original)
-        subir_comisiones(df_original, "Datos_Normalizados", batch_size=500)
+        subir_comisiones(df_original, "Datos_Normalizados", batch_size=2000)
         #mostrar_tabla_completa(df_original, "🔁 Desdoble de comisiones por COD_VEND y VEND_FIRMA")
         # mostrar_tabla_completa(df_original, "fix VEND_FIRMA")
         # Aquí comenzará el flujo de transformaciones posteriores...
